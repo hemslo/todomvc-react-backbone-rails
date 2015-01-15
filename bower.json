@@ -1,0 +1,8 @@
+{
+  "name": "bower-rails generated vendor assets",
+  "dependencies": {
+    "backbone": "~1.1.2",
+    "todomvc-common": "~0.3.0",
+    "underscore": "~1.7.0"
+  }
+}
