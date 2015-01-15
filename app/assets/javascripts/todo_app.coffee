@@ -7,7 +7,3 @@ window.TodoApp =
   Models: {}
   Collections: {}
   Routers: {}
-  initialize: -> console.log 'Hello from Backbone!'
-
-$(document).ready ->
-  TodoApp.initialize()

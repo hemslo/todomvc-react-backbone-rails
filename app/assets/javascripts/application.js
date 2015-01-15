@@ -13,7 +13,10 @@
 //= require jquery
 //= require jquery_ujs
 //= require turbolinks
+//= require react
+//= require react_ujs
 //= require underscore
 //= require backbone
 //= require todo_app
+//= require components
 //= require_tree .
