@@ -1,7 +1,11 @@
-{div} = React.DOM
+#= require ./todo
 
 Routes = React.createClass
   displayNmae: 'Routes'
+
+  propTypes:
+    todos: React.PropTypes.string.isRequired
+    todos_path: React.PropTypes.string.isRequired
 
   getInitialState: ->
     view: 'Home'
@@ -26,6 +30,6 @@ Routes = React.createClass
     @["render#{@state.view}"]()
 
   renderHome: ->
-    div null, "View: #{@state.props.filter}"
+    React.createElement Todo, _.extend({}, @props, @state.props)
 
 window.Routes = Routes

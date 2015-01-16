@@ -1,5 +1,7 @@
 <%= react_component('Routes',
-                    {},
+                    { todos: render(template: 'todos/index.json.jbuilder',
+                                    locals: { todos: @todos }),
+                      todos_path: todos_path },
                     { id: 'todoapp', tag: :section, prerender: false })
 %>
 <footer id="info">
