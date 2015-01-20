@@ -1,119 +1,53 @@
 {header, h1, input, label, ul, li, div
 , button, section, span, strong, footer, a} = React.DOM
-{classSet, LinkedStateMixin, update} = React.addons
+{classSet, LinkedStateMixin} = React.addons
 
 ENTER_KEY = 13
 ESCAPE_KEY = 27
 
 Todo = React.createClass
   displayName: 'Todo'
-  mixins: [classSet, LinkedStateMixin, update]
+  mixins: [classSet, LinkedStateMixin]
 
   propTypes:
     filter: React.PropTypes.oneOf(['all', 'active', 'completed']).isRequired
-    todos: React.PropTypes.string.isRequired
-    todos_path: React.PropTypes.string.isRequired
+    todos: React.PropTypes.object.isRequired
 
   getInitialState: ->
-    todos: @_sort(JSON.parse(@props.todos))
+    todos: @props.todos.toJSON()
     newTodoTitle: ''
     editing: null
     editText: ''
 
-  addTodo: (title) ->
-    $.ajax
-      type: 'POST'
-      url: @props.todos_path
-      data: { todo: { title: title, completed: false } }
-      dataType: 'json'
-    .done (data) =>
-      @setState todos: @_sort(update(@state.todos, $push: [data]))
-    .fail (xhr, status, err) ->
-      console.error @props.todos_path, status, err.toString()
+  componentDidMount: ->
+    @props.todos.on 'add change remove', @_onChange, @
 
-  toogle: (item) ->
-    @_update item, completed: !item.completed
-    .done (data) =>
-      @setState todos: @_replaceTodos([
-        index: @state.todos.indexOf(item)
-        data: data
-      ])
-    .fail (xhr, status, err) ->
-      console.error status, err.toString()
+  componentWillUnmount: ->
+    @props.todos.off null, null, @
+
+  _onChange: ->
+    @setState todos: @props.todos.toJSON()
+
+  addTodo: (title) ->
+    @props.todos.create { title: title, completed: false }, { wait: true }
+
+  toogle: (id) ->
+    @props.todos.get(id).toggle()
 
   toogleAll: (checked) ->
-    todos = if checked then @activeTodos() else @completedTodos()
-    $.when
-    .apply null, todos.map (todo) =>
-      @_update todo, completed: checked
-    .done (results...) =>
-      if results.length == 3
-        results = [results] if typeof(results[1]) is 'string'
-      @setState todos: @_replaceTodos(results.map (result) =>
-        for todo, i in @state.todos
-          return { index: i, data: result[0] } if result[0].id is todo.id
-      )
+    todos = if checked then @props.todos.active() else @props.todos.completed()
+    todos.forEach (todo) ->
+      todo.toggle()
 
-  save: (item, attrs) ->
-    @_update item, attrs
-    .done (data) =>
-      @setState todos: @_replaceTodos([
-        index: @state.todos.indexOf(item)
-        data: data
-      ])
-    .fail (xhr, status, err) ->
-      console.error status, err.toString()
+  save: (id, attrs) ->
+    @props.todos.get(id).save(attrs, { wait: true })
 
-  destroy: (item) ->
-    $.ajax
-      type: 'DELETE'
-      url: @_todo_path(item)
-      dataType: 'json'
-    .done =>
-      @setState todos: @_sort(@state.todos.filter (todo) ->
-        todo != item
-      )
+  destroy: (id) ->
+    @props.todos.get(id).destroy(wait: true)
 
   clearCompleted: ->
-    $.when
-    .apply null, @completedTodos().map (todo) =>
-      $.ajax
-        type: 'DELETE'
-        url: @_todo_path(todo)
-        dataType: 'json'
-    .then =>
-      @setState todos: @activeTodos()
-
-  isAllComplete: ->
-    @state.todos.every (todo) ->
-      todo.completed
-
-  activeTodos: ->
-    @state.todos.filter (todo) ->
-      !todo.completed
-
-  completedTodos: ->
-    @state.todos.filter (todo) ->
-      todo.completed
-
-  _update: (todo, attrs) ->
-    $.ajax
-      type: 'PUT'
-      url: @_todo_path(todo)
-      data: { todo: update(todo, $merge: attrs) }
-      dataType: 'json'
-
-  _sort: (todos) ->
-    todos.sort (a, b) ->
-      a.id - b.id
-
-  _replaceTodos: (mappings) ->
-    @_sort update(@state.todos, $splice: mappings.map (mapping) ->
-      [mapping.index, 1, mapping.data]
-    )
-
-  _todo_path: (todo) ->
-    @props.todos_path + "/#{todo.id}"
+    @props.todos.completed().forEach (todo) ->
+      todo.destroy wait: true
 
   handleNewTodoKeyDown: (event) ->
     return if event.which != ENTER_KEY
@@ -121,14 +55,14 @@ Todo = React.createClass
     @addTodo(val) if val
     @setState newTodoTitle: ''
 
-  handleToggle: (item) ->
-    @toogle item
+  handleToggle: (id) ->
+    @toogle id
 
   handleToggleAll: (event) ->
     @toogleAll event.target.checked
 
   handleEdit: (item) ->
-    @setState editing: item, editText: item.title
+    @setState editing: item.id, editText: item.title
 
   handleEditKeyDown: (event) ->
     if event.which is ESCAPE_KEY
@@ -136,8 +70,8 @@ Todo = React.createClass
     else if event.which is ENTER_KEY
       @handleEditSubmit event
 
-  handleDestroyButtonClick: (item) ->
-    @destroy item
+  handleDestroyButtonClick: (id) ->
+    @destroy id
 
   handleEditSubmit: (event) ->
     return unless @state.editing
@@ -172,34 +106,36 @@ Todo = React.createClass
       input
         id: 'toggle-all'
         type: 'checkbox'
-        checked: @isAllComplete()
+        checked: @props.todos.isAllComplete()
         onChange: @handleToggleAll
       label htmlFor: 'toggle-all', 'Mark all as complete'
       ul id: 'todo-list', @renderTodoItems()
 
   renderTodoItems: ->
-    todos = switch @props.filter
-      when 'active' then @activeTodos()
-      when 'completed' then @completedTodos()
-      else @state.todos
-    (@renderTodoItem(item) for item in todos)
+    @state.todos.map (todo) =>
+      switch @props.filter
+        when 'all' then @renderTodoItem(todo)
+        when 'active'
+          @renderTodoItem(todo) if !todo.completed
+        when 'completed'
+          @renderTodoItem(todo) if todo.completed
 
   renderTodoItem: (item) ->
     classes = classSet
       completed: item.completed
-      editing: item is @state.editing
+      editing: item.id is @state.editing
     li { key: item.id, className: classes },
       div className: 'view',
         input
           className: 'toggle'
           type: 'checkbox'
           checked: item.completed
-          onChange: @handleToggle.bind(@, item)
+          onChange: @handleToggle.bind(@, item.id)
         label onDoubleClick: @handleEdit.bind(@, item),
           item.title
         button
           className: 'destroy'
-          onClick: @handleDestroyButtonClick.bind(@, item)
+          onClick: @handleDestroyButtonClick.bind(@, item.id)
       input
         className: 'edit'
         valueLink: @linkState('editText')
@@ -207,8 +143,8 @@ Todo = React.createClass
         onBlur: @handleEditSubmit
 
   renderFooter: ->
-    activeCount = @activeTodos().length
-    completedCount = @state.todos.length - activeCount
+    activeCount = @props.todos.active().length
+    completedCount = @props.todos.length - activeCount
     footer id: 'footer',
       span id: 'todo-count',
         strong null, activeCount
