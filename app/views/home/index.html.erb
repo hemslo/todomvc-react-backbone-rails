@@ -1,7 +1,7 @@
 <%= react_component('Routes',
                     { todos: render(template: 'todos/index.json.jbuilder',
                                     locals: { todos: @todos }) },
-                    { id: 'todoapp', tag: :section, prerender: false })
+                    { id: 'todoapp', tag: :section, prerender: true })
 %>
 <footer id="info">
   <p>Double-click to edit a todo</p>
