@@ -7,3 +7,4 @@ window.TodoApp =
   Models: {}
   Collections: {}
   Routers: {}
+  Dispatcher: _.clone(Backbone.Events)

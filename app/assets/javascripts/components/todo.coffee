@@ -1,6 +1,7 @@
 {header, h1, input, label, ul, li, div
 , button, section, span, strong, footer, a} = React.DOM
 {classSet, LinkedStateMixin} = React.addons
+dispatcher = TodoApp.Dispatcher
 
 ENTER_KEY = 13
 ESCAPE_KEY = 27
@@ -28,38 +29,17 @@ Todo = React.createClass
   _onChange: ->
     @setState todos: @props.todos.toJSON()
 
-  addTodo: (title) ->
-    @props.todos.create { title: title, completed: false }, { wait: true }
-
-  toogle: (id) ->
-    @props.todos.get(id).toggle()
-
-  toogleAll: (checked) ->
-    todos = if checked then @props.todos.active() else @props.todos.completed()
-    todos.forEach (todo) ->
-      todo.toggle()
-
-  save: (id, attrs) ->
-    @props.todos.get(id).save(attrs, { wait: true })
-
-  destroy: (id) ->
-    @props.todos.get(id).destroy(wait: true)
-
-  clearCompleted: ->
-    @props.todos.completed().forEach (todo) ->
-      todo.destroy wait: true
-
   handleNewTodoKeyDown: (event) ->
     return if event.which != ENTER_KEY
     val = @state.newTodoTitle.trim()
-    @addTodo(val) if val
+    dispatcher.trigger('add', val) if val
     @setState newTodoTitle: ''
 
   handleToggle: (id) ->
-    @toogle id
+    dispatcher.trigger 'toggle', id
 
   handleToggleAll: (event) ->
-    @toogleAll event.target.checked
+    dispatcher.trigger 'toggleAll', event.target.checked
 
   handleEdit: (item) ->
     @setState editing: item.id, editText: item.title
@@ -77,13 +57,13 @@ Todo = React.createClass
     return unless @state.editing
     val = @state.editText.trim()
     if val
-      @save @state.editing, title: val
+      dispatcher.trigger 'save', @state.editing, title: val
     else
-      @destroy @state.editing
+      dispatcher.trigger 'destroy', @state.editing
     @setState editText: '', editing: null
 
   handleClearCompleted: (event) ->
-    @clearCompleted()
+    dispatcher.trigger 'clearCompleted'
 
   render: ->
     div null,
