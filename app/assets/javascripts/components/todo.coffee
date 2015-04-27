@@ -8,7 +8,7 @@ ESCAPE_KEY = 27
 
 Todo = React.createClass
   displayName: 'Todo'
-  mixins: [classSet, LinkedStateMixin]
+  mixins: [LinkedStateMixin]
 
   propTypes:
     filter: React.PropTypes.oneOf(['all', 'active', 'completed']).isRequired
@@ -148,6 +148,6 @@ Todo = React.createClass
     button
       id: 'clear-completed'
       onClick: @handleClearCompleted
-      , "Clear completed (#{completedCount})"
+      , "Clear completed"
 
 window.Todo = Todo
